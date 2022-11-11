@@ -19,18 +19,18 @@ const db = {
   // READ: 0, WRITE: 1
   permissions: {
     // ROLE: {READ, WRITE}
-    [ADMIN]: Set([READ, WRITE]),
-    [USER]: Set([READ]),
+    [ADMIN]: new Set([READ, WRITE]),
+    [USER]: new Set([READ]),
   },
 };
 
 const get_user_info = (user) => {
-  for (user_obj in db["users"]) {
+  for (const user_obj of db["users"]) {
     if (user_obj.user === user) {
       return user_obj;
     }
-    return null;
   }
+  return null;
 };
 
 const get_user_token = (user_obj) => {
@@ -60,19 +60,20 @@ const login_user = (user, pass) => {
   };
 };
 
-const authenticate = (req) => {
-  const token = req.get("Authorization").split(" ")[1];
+const authenticate = (req, res) => {
+  const token = req.get("authorization");
   try {
     const { user, pass, role } = jwt.verify(token, JWT_SECRET);
     return role;
   } catch (err) {
-    return res.status(401).send();
+    console.log(err);
+    return null;
   }
 };
 
 const verify_perms = (role, perms) => {
   const roles = db["permissions"][role];
-  for (const p in perms) {
+  for (const p of perms) {
     if (!roles.has(p)) {
       return false;
     }
@@ -82,12 +83,15 @@ const verify_perms = (role, perms) => {
 
 const authorize = (perms, handler) => {
   return (req, res) => {
-    const role = authenticate(req);
+    const role = authenticate(req, res);
+    if (role === null) {
+      return res.status(401).send("Failed to authenticate");
+    }
     const is_verified = verify_perms(role, perms);
     if (is_verified) {
       return handler(req, res);
     }
-    return res.status(403).send();
+    return res.status(403).send("Inadequate permissions");
   };
 };
 
@@ -103,7 +107,7 @@ app.get(
 app.post("/login", (req, res) => {
   const { user, pass } = req.body;
   if (user == undefined || pass == undefined) {
-    return res.status(400).send();
+    return res.status(400).send("Missing user or pass");
   }
   res.send(login_user(user, pass));
 });
