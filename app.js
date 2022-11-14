@@ -16,9 +16,7 @@ const db = {
     { user: "admin", pass: "admin", role: ADMIN },
     { user: "user", pass: "user", role: USER },
   ],
-  // READ: 0, WRITE: 1
   permissions: {
-    // ROLE: {READ, WRITE}
     [ADMIN]: new Set([READ, WRITE]),
     [USER]: new Set([READ]),
   },
@@ -109,7 +107,8 @@ app.post("/login", (req, res) => {
   if (user == undefined || pass == undefined) {
     return res.status(400).send("Missing user or pass");
   }
-  res.send(login_user(user, pass));
+  const result = login_user(user, pass);
+  res.status(result.statusCode).send(result);
 });
 
 app.listen(port, () => {
